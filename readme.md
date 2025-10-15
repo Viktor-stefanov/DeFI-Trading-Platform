@@ -1,5 +1,8 @@
 # Usage
 
+I assume you have git and npm installed on your machine. If not - go install
+them :D.
+
 1. Clone git repository
 
 - `git clone git@github.com:Viktor-stefanov/DeFI-Trading-Platform.git`
