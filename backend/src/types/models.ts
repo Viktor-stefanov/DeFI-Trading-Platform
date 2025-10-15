@@ -32,7 +32,7 @@ export interface Asset {
   history?: HistoryEntry[]; // circular buffer
 }
 
-// artificial pools for the constant AMM
+// TODO: artificial pools for the constant AMM
 export interface Pool {
   baseSymbol: string;
   reserveBase: number;
@@ -77,5 +77,4 @@ export interface Order {
 export interface StoreRuntime {
   assetsMap: Map<string, Asset>;
   ordersList: Order[];
-  // wsClients etc. can be added later
 }

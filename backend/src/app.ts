@@ -25,21 +25,20 @@ app.use(cors({ origin: "http://localhost:5173" })); // narrow CORS for dev front
 app.use(express.json());
 
 // HTTP routes
-app.use("/orders", ordersRoute);
+app.use("/", ordersRoute);
 app.get("/health", (_, res) =>
   res.json({ status: "ok", ts: new Date().toISOString() })
 );
 
 const server = http.createServer(app);
 
-// WS server
 const wss = new WebSocketServer({ noServer: true });
 
 let wsClientCounter = 1;
 
 /**
  * Handle upgraded WebSocket connection.
- * Performs a simple auth check using the 'authorization' header sent during the upgrade.
+ * Performs a simple auth check using the token query string sent during the upgrade.
  */
 wss.on("connection", (socket, req) => {
   const clientId = `c_${Date.now()}_${wsClientCounter++}`;
@@ -47,69 +46,52 @@ wss.on("connection", (socket, req) => {
 
   console.log(`[WS] connection from clientId=${clientId}, token=${authToken}`);
 
-  // Wrap everything in try/catch to prevent 1006
+  // Register client
   try {
-    // Register client
-    try {
-      addWsClient(clientId, socket as any, { authToken });
-      console.log(`[WS] added client ${clientId}`);
-    } catch (err) {
-      console.error(`[WS] addWsClient failed:`, err);
-      try {
-        socket.close(1011, "add client failed");
-      } catch {}
-      return;
-    }
-
-    // Send snapshot **safely** after the current tick
-    setImmediate(() => {
-      try {
-        const snapshot = getAssetsSnapshotForWs();
-        console.log(
-          `[WS] sending snapshot to ${clientId}, length=${snapshot.length}`
-        );
-        // Safe stringify
-        const payload = JSON.stringify({ type: "snapshot", data: snapshot });
-        socket.send(payload, (err) => {
-          if (err) console.error(`[WS] send snapshot error:`, err);
-        });
-      } catch (err) {
-        console.error(`[WS] failed to send snapshot:`, err);
-        try {
-          socket.close(1011, "snapshot failed");
-        } catch {}
-        removeWsClient(clientId);
-      }
-    });
-
-    socket.on("message", (raw) => {
-      try {
-        // handle client messages
-      } catch (err) {
-        console.error(`[WS] message handler error:`, err);
-      }
-    });
-
-    socket.on("error", (err) => {
-      console.error(`[WS] socket error:`, err);
-    });
-
-    socket.on("close", (code, reason) => {
-      console.log(
-        `[WS] socket closed: code=${code} reason=${reason?.toString()}`
-      );
-      removeWsClient(clientId);
-    });
+    addWsClient(clientId, socket as any, { authToken });
+    console.log(`[WS] added client ${clientId}`);
   } catch (err) {
-    console.error(`[WS] unexpected connection error:`, err);
+    console.error(`[WS] addWsClient failed:`, err);
     try {
-      socket.close(1011, "internal error");
+      socket.close(1011, "add client failed");
     } catch {}
+    return;
   }
+
+  const snapshot = getAssetsSnapshotForWs();
+  console.log(
+    `[WS] sending snapshot to ${clientId}, length=${snapshot.length}`
+  );
+  const payload = JSON.stringify({ type: "snapshot", data: snapshot });
+
+  socket.send(payload, (err) => {
+    if (err) {
+      console.error(`[WS] send snapshot error:`, err);
+      socket.terminate();
+      removeWsClient(clientId);
+    }
+  });
+
+  socket.on("message", (raw) => {
+    try {
+    } catch (err) {
+      console.error(`[WS] message handler error:`, err);
+    }
+  });
+
+  socket.on("error", (err) => {
+    console.error(`[WS] socket error:`, err);
+  });
+
+  socket.on("close", (code, reason) => {
+    console.log(
+      `[WS] socket closed: code=${code} reason=${reason?.toString()}`
+    );
+    removeWsClient(clientId);
+  });
 });
 
 wss.on("headers", (headers, req) => {
-  // optional: add CORS headers here if needed for browser WS
   console.log("WS headers:", headers);
 });
 
@@ -180,7 +162,6 @@ function simulateTickForSymbol(symbol: string) {
 
   const vol = asset.volatility ?? 0.002;
   const oldPrice = asset.price;
-  // small multiplicative random walk
   const deltaPct = (Math.random() - 0.5) * 2 * vol;
   const newPrice = Math.max(0.00000001, oldPrice * (1 + deltaPct));
   const ts = new Date().toISOString();
@@ -199,14 +180,12 @@ function simulateTickForSymbol(symbol: string) {
 let pendingTicks: any[] = [];
 
 setInterval(() => {
-  // pick a handful of symbols and simulate
   const symbols = pickWeightedSymbols(
     Math.max(1, Math.floor(assetsList.length / 4))
   );
   for (const s of symbols) {
     const t = simulateTickForSymbol(s);
     if (t) {
-      // build minimal tick payload
       const asset = getAsset(s)!;
       const tick = {
         type: "tick",

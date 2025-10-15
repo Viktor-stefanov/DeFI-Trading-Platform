@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useWsStore } from "../stores/ws";
 import { useAssetsStore } from "../stores/assets";
 import type { Asset } from "../types/models";
@@ -23,9 +23,11 @@ export function useWsTicker(url = "ws://localhost:4000/ws/ticker?token=demo") {
   const updateAsset = useAssetsStore((s) => s.updateAsset);
   const assetsGetState = useAssetsStore.getState;
 
+  // pending tick merge debouncing
   const pendingTicksRef = useRef<Map<string, TickMsg>>(new Map());
   const pendingTimersRef = useRef<Map<string, number>>(new Map());
 
+  // flash clear timers to remove highlight after FLASH_MS
   const flashClearTimersRef = useRef<Map<string, number>>(new Map());
 
   const tickToAsset = (t: TickMsg): Asset => ({
@@ -91,6 +93,7 @@ export function useWsTicker(url = "ws://localhost:4000/ws/ticker?token=demo") {
       return;
     }
 
+    // new asset — append to list
     const newAsset = tickToAsset(t);
     const allAssets = Object.values(state.assetsMap).concat(newAsset);
     setAssets(allAssets);
@@ -106,7 +109,7 @@ export function useWsTicker(url = "ws://localhost:4000/ws/ticker?token=demo") {
       pendingTimersRef.current.delete(symbol);
     }
 
-    const delayMs = 500 + Math.floor(Math.random() * 1501);
+    const delayMs = 500 + Math.floor(Math.random() * 1501); // 500..2000ms randomized
 
     const timerId = window.setTimeout(() => {
       try {
@@ -125,8 +128,21 @@ export function useWsTicker(url = "ws://localhost:4000/ws/ticker?token=demo") {
     pendingTimersRef.current.set(symbol, timerId);
   };
 
-  useEffect(() => {
-    if (!url) return;
+  const connect = useCallback(() => {
+    for (const tid of pendingTimersRef.current.values()) clearTimeout(tid);
+    pendingTimersRef.current.clear();
+    pendingTicksRef.current.clear();
+
+    for (const tid of flashClearTimersRef.current.values()) clearTimeout(tid);
+    flashClearTimersRef.current.clear();
+
+    wsRef.current?.close();
+
+    if (!url) {
+      setError("No websocket URL supplied");
+      setConnected(false);
+      return;
+    }
 
     const ws = new WebSocket(url);
     wsRef.current = ws;
@@ -183,7 +199,7 @@ export function useWsTicker(url = "ws://localhost:4000/ws/ticker?token=demo") {
       }
     };
 
-    ws.onerror = (ev) => {
+    ws.onerror = () => {
       setError("WebSocket error");
     };
 
@@ -196,26 +212,30 @@ export function useWsTicker(url = "ws://localhost:4000/ws/ticker?token=demo") {
       }
       wsRef.current = null;
     };
+  }, [url, setAssets, setConnected, setError, updateAsset, tickToAsset]);
+
+  // open socket on mount
+  useEffect(() => {
+    connect();
 
     return () => {
       try {
-        ws.close();
+        wsRef.current?.close();
       } catch {}
       wsRef.current = null;
 
-      // clear pending tick timers
       for (const tid of pendingTimersRef.current.values()) clearTimeout(tid);
       pendingTimersRef.current.clear();
       pendingTicksRef.current.clear();
 
-      // clear flash timers
       for (const tid of flashClearTimersRef.current.values()) clearTimeout(tid);
       flashClearTimersRef.current.clear();
     };
-  }, [url, setAssets, setConnected, setError, updateAsset]);
+  }, []);
 
   return {
     wsRef,
+    reconnect: connect,
     getConnected: () => useWsStore.getState().connected,
   } as const;
 }

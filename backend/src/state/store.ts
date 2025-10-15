@@ -159,22 +159,19 @@ export function updateAssetTick(
   }
   asset.lastUpdated = now;
 
-  // append to history (sampled tick)
   pushHistoryEntry(asset, {
     ts: now,
     price: asset.price,
     volume: partialTick.volume,
   });
 
-  // apply pool snapshot if present
   if (partialTick.pool && asset.pool) {
     asset.pool = { ...asset.pool, ...partialTick.pool };
   }
 
-  // recompute derived metrics from history
   recomputeDerivedFromHistory(asset);
 
-  // reflect back into assetsMap and assetsList
+  // reflect changes into assetsMap and assetsList
   assetsMap.set(symbol, asset);
   const idx = assetsList.findIndex((a) => a.symbol === symbol);
   if (idx >= 0) assetsList[idx] = asset;
@@ -269,13 +266,10 @@ export function addWsClient(
 export function removeWsClient(clientId: string) {
   const client = wsClients.get(clientId);
   if (!client) return;
-  try {
-    if (client.socket && typeof client.socket.close === "function") {
-      client.socket.close();
-    }
-  } catch {
-    // ignore close errors
+  if (client.socket && typeof client.socket.close === "function") {
+    client.socket.close();
   }
+
   wsClients.delete(clientId);
 }
 

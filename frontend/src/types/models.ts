@@ -1,4 +1,4 @@
-export interface Asset {
+export type Asset = {
   symbol: string;
   name: string;
   chain: string;
@@ -8,15 +8,18 @@ export interface Asset {
   priceHistory?: number[];
   lastChangeAt?: number | null;
   lastChangeDirection?: "up" | "down" | null;
-}
+};
 
-export interface Order {
-  id: string;
-  clientId: string;
+export type Order = {
+  id?: string;
+  clientId?: string;
   symbol: string;
   side: "buy" | "sell";
   qty: number;
-  price: number;
+  price?: number;
   status: "pending" | "filled" | "rejected";
-  ts: string;
-}
+  filledQty?: number;
+  avgPrice?: number;
+  ts?: string;
+  notes?: string;
+};
