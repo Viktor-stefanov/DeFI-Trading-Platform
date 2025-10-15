@@ -11,11 +11,13 @@ const App: React.FC = () => {
   const error = useWsStore((s) => s.error);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <h1 className="text-2xl font-bold mb-4">Mini Real-Time Trading Panel</h1>
+    <div className="min-h-screen bg-gray-50 p-8">
+      <h1 className="text-2xl font-bold mb-8 text-center">
+        Mini Real-Time Trading Panel
+      </h1>
 
       {!connected && (
-        <div className="p-2 mb-4 bg-red-100 text-red-700 rounded">
+        <div className="p-2 mb-4 bg-red-100 text-red-700 rounded text-center">
           {error || "Connecting..."}
         </div>
       )}

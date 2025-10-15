@@ -5,6 +5,9 @@ export interface Asset {
   price: number;
   change24hPct: number;
   volume24h: number;
+  priceHistory?: number[];
+  lastChangeAt?: number | null;
+  lastChangeDirection?: "up" | "down" | null;
 }
 
 export interface Order {

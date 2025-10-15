@@ -1,24 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo } from "react";
 import { useAssetsStore } from "../stores/assets";
 
-export const MarketTable: React.FC = () => {
-  const assetsMap = useAssetsStore((state) => state.assetsMap); // stable reference
-  const assets = useMemo(() => Object.values(assetsMap), [assetsMap]);
-  const updateTimesRef = useRef<Record<string, number>>({}); // track flash timestamps
-  const [flashTrigger, setFlashTrigger] = useState(0);
+const FLASH_BG_UP = "bg-green-100";
+const FLASH_BG_DOWN = "bg-red-100";
 
-  // watch assets changes to trigger flash
-  useEffect(() => {
-    console.log("working");
-    const now = Date.now();
-    const newUpdateTimes: Record<string, number> = {};
-    assets.forEach((a) => {
-      const prevTime = updateTimesRef.current[a.symbol] ?? 0;
-      // naive flash trigger: if price changed, mark nowG
-      newUpdateTimes[a.symbol] = prevTime;
-    });
-    updateTimesRef.current = newUpdateTimes;
-  }, [assets]);
+export const MarketTable: React.FC = () => {
+  const assetsMap = useAssetsStore((state) => state.assetsMap);
+  const assets = useMemo(() => Object.values(assetsMap), [assetsMap]);
 
   return (
     <div className="w-full max-w-4xl mx-auto mt-6">
@@ -30,17 +18,17 @@ export const MarketTable: React.FC = () => {
       </div>
 
       {assets.map((a) => {
-        const priceChange = Math.random() > 0.5 ? "up" : "down"; // placeholder for flash
+        const isFlashing = !!a.lastChangeAt;
+        const bgClass = isFlashing
+          ? a.lastChangeDirection === "up"
+            ? FLASH_BG_UP
+            : FLASH_BG_DOWN
+          : "";
+
         return (
           <div
             key={a.symbol}
-            className={`grid grid-cols-4 gap-2 py-2 border-b border-gray-200 transition-colors duration-300 ${
-              priceChange === "up"
-                ? "bg-green-100"
-                : priceChange === "down"
-                ? "bg-red-100"
-                : ""
-            }`}
+            className={`grid grid-cols-4 gap-2 py-2 border-b border-gray-200 transition-colors duration-300 ${bgClass}`}
           >
             <div className="flex items-center space-x-2">
               <span className="font-bold">{a.symbol}</span>
@@ -48,7 +36,11 @@ export const MarketTable: React.FC = () => {
                 {a.chain}
               </span>
             </div>
-            <div>${a.price.toFixed(2)}</div>
+
+            <div className={`flex items-center ${isFlashing ? "throb" : ""}`}>
+              <span className="font-mono">${a.price.toFixed(2)}</span>
+            </div>
+
             <div
               className={
                 a.change24hPct >= 0 ? "text-green-600" : "text-red-600"
@@ -56,6 +48,7 @@ export const MarketTable: React.FC = () => {
             >
               {a.change24hPct.toFixed(2)}%
             </div>
+
             <div>{a.volume24h.toLocaleString()}</div>
           </div>
         );
@@ -63,3 +56,5 @@ export const MarketTable: React.FC = () => {
     </div>
   );
 };
+
+export default MarketTable;
