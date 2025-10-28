@@ -10,6 +10,9 @@ const client: AxiosInstance = axios.create({
   },
 });
 
+// Send cookies (HttpOnly session) by default so server-side sessions work across requests
+client.defaults.withCredentials = true;
+
 let authToken: string | null = null;
 
 export function setAuthToken(token: string | null) {
@@ -18,6 +21,13 @@ export function setAuthToken(token: string | null) {
     client.defaults.headers.common["Authorization"] = `Bearer ${token}`;
   } else {
     delete client.defaults.headers.common["Authorization"];
+  }
+  // Emit a global event so app-level providers can react to token changes
+  try {
+    const win = window as unknown as EventTarget;
+    win.dispatchEvent(new CustomEvent("auth:token-changed", { detail: token }));
+  } catch {
+    // Ignore if window/event not available (e.g., SSR)
   }
 }
 
