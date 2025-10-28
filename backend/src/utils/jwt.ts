@@ -28,7 +28,30 @@ export function signJwt(payload: object): string {
 export function verifyJwt<T = any>(token: string): T | null {
   try {
     return jwt.verify(token, JWT_SECRET) as T;
-  } catch (err) {
+  } catch (err: any) {
+    // Don't log the token. Decode non-verified payload to aid debugging
+    try {
+      const decoded = jwt.decode(token) as any;
+      const debugInfo = {
+        userId: decoded?.userId ?? null,
+        address: decoded?.address ?? null,
+        email: decoded?.email ?? null,
+        iat: decoded?.iat ?? null,
+        exp: decoded?.exp ?? null,
+      };
+      console.error(
+        "[auth][jwt] verify failed; decoded payload fields:",
+        debugInfo,
+        "error:",
+        err?.message ?? err
+      );
+    } catch (decodeErr) {
+      console.error(
+        "[auth][jwt] verify failed and decode also failed",
+        err?.message ?? err,
+        decodeErr
+      );
+    }
     return null;
   }
 }
