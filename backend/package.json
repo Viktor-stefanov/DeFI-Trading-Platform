@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.5",
@@ -19,14 +20,17 @@
     "ethers": "^6.15.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "node-postgres": "^0.6.2",
     "pg": "^8.16.3"
   },
   "devDependencies": {
     "@tsconfig/node-lts": "^22.0.2",
+    "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.4",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.9.1",
+    "@types/pg": "^8.15.6",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3"
   }
