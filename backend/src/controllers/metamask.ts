@@ -7,11 +7,21 @@ import {
 import { verifySignature } from "../utils/eth";
 import { signJwt } from "../utils/jwt";
 
+/**
+ * Build the human-readable message that the user will sign in MetaMask.
+ * Keep this stable so the same message can be recreated for verification.
+ *
+ * @param nonce - one-time nonce to include in the message
+ * @returns message string to be signed by the wallet
+ */
 function makeMessage(nonce: string): string {
-  // Standard human-readable prompt for signing. Keep stable so verification works.
   return `Sign this message to authenticate with the app. Nonce: ${nonce}`;
 }
 
+/**
+ * GET /auth/nonce?address=0x...
+ * Create and return a nonce and the message that the frontend should sign.
+ */
 export async function getNonceHandler(req: Request, res: Response) {
   const address = (req.query.address as string | undefined)?.trim();
   if (!address)
@@ -22,6 +32,13 @@ export async function getNonceHandler(req: Request, res: Response) {
   return res.json({ nonce, message });
 }
 
+/**
+ * POST /auth/verify
+ * Verify that the provided signature was created by the given address signing
+ * the server-provided nonce message. If valid, issue a JWT for the session.
+ *
+ * Expected body: { address: string, signature: string }
+ */
 export async function verifyHandler(req: Request, res: Response) {
   const { address, signature } = req.body as {
     address?: string;

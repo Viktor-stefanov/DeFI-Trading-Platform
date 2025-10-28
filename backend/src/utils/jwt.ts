@@ -6,11 +6,25 @@ dotenv.config();
 const JWT_SECRET = process.env.JWT_SECRET || "change-me-in-prod";
 const JWT_EXPIRES = process.env.JWT_EXPIRES || "1h";
 
+/**
+ * Sign a JWT for the given payload using the configured secret and expiry.
+ *
+ * @param payload - Object to include in the JWT payload (e.g. { address })
+ * @returns signed JWT string
+ */
 export function signJwt(payload: object): string {
   const opts = { expiresIn: JWT_EXPIRES } as any;
   return jwt.sign(payload, JWT_SECRET as Secret, opts as SignOptions);
 }
 
+/**
+ * Verify and decode a JWT token. Returns the decoded payload on success,
+ * or null if verification fails.
+ *
+ * @typeParam T - Expected payload shape after verification
+ * @param token - JWT string to verify
+ * @returns decoded payload as T or null on failure
+ */
 export function verifyJwt<T = any>(token: string): T | null {
   try {
     return jwt.verify(token, JWT_SECRET) as T;
