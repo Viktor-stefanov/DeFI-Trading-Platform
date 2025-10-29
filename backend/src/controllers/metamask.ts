@@ -7,6 +7,7 @@ import {
 import { verifySignature } from "../utils/eth";
 import { signJwt } from "../utils/jwt";
 import { JWT_COOKIE_NAME, JWT_COOKIE_MAX_AGE } from "../config";
+import logger from "../utils/logger";
 
 /**
  * Build the human-readable message that the user will sign in MetaMask.
@@ -41,13 +42,13 @@ export async function getNonceHandler(req: Request, res: Response) {
  * Expected body: { address: string, signature: string }
  */
 export async function verifyHandler(req: Request, res: Response) {
-  console.log("[auth][metamask] verifyHandler invoked");
+  logger.debug("[auth][metamask] verifyHandler invoked");
   const { address, signature } = req.body as {
     address?: string;
     signature?: string;
   };
   if (!address || !signature) {
-    console.log("[auth][metamask] verifyHandler missing fields", {
+    logger.warn("[auth][metamask] verifyHandler missing fields", {
       hasAddress: Boolean(address),
       hasSignature: Boolean(signature),
     });
@@ -56,7 +57,7 @@ export async function verifyHandler(req: Request, res: Response) {
 
   const nonce = getNonce(address);
   if (!nonce) {
-    console.log(`[auth][metamask] no nonce for ${address}`);
+    logger.warn(`[auth][metamask] no nonce for ${address}`);
     return res
       .status(400)
       .json({ error: "no valid nonce for address (maybe expired)" });
@@ -65,15 +66,15 @@ export async function verifyHandler(req: Request, res: Response) {
   const message = makeMessage(nonce);
   const recovered = verifySignature(message, signature);
   if (!recovered) {
-    console.log(
+    logger.warn(
       `[auth][metamask] signature verification failed for ${address}`
     );
     return res.status(400).json({ error: "signature verification failed" });
   }
 
-  console.log(`[auth][metamask] recovered=${recovered} expected=${address}`);
+  logger.debug(`[auth][metamask] recovered=${recovered} expected=${address}`);
   if (recovered.toLowerCase() !== address.toLowerCase()) {
-    console.log(`[auth][metamask] signature does not match address ${address}`);
+    logger.warn(`[auth][metamask] signature does not match address ${address}`);
     return res.status(401).json({ error: "signature does not match address" });
   }
 
@@ -91,6 +92,6 @@ export async function verifyHandler(req: Request, res: Response) {
     maxAge: JWT_COOKIE_MAX_AGE,
   });
 
-  console.log(`[auth][metamask] verifyHandler success address=${recovered}`);
+  logger.info(`[auth][metamask] verifyHandler success address=${recovered}`);
   return res.json({ address: recovered });
 }

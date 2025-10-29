@@ -1,5 +1,6 @@
 import jwt, { SignOptions, Secret } from "jsonwebtoken";
 import dotenv from "dotenv";
+import logger from "./logger";
 
 dotenv.config();
 
@@ -39,18 +40,15 @@ export function verifyJwt<T = any>(token: string): T | null {
         iat: decoded?.iat ?? null,
         exp: decoded?.exp ?? null,
       };
-      console.error(
-        "[auth][jwt] verify failed; decoded payload fields:",
-        debugInfo,
-        "error:",
-        err?.message ?? err
-      );
+      logger.warn("[auth][jwt] verify failed; decoded payload fields", {
+        payload: debugInfo,
+        err,
+      });
     } catch (decodeErr) {
-      console.error(
-        "[auth][jwt] verify failed and decode also failed",
-        err?.message ?? err,
-        decodeErr
-      );
+      logger.error("[auth][jwt] verify failed and decode also failed", {
+        verifyError: err,
+        decodeError: decodeErr,
+      });
     }
     return null;
   }

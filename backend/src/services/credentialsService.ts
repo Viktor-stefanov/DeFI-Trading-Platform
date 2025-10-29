@@ -2,6 +2,7 @@ import { db } from "../db";
 import { users } from "../db/schema/schema";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
+import logger from "../utils/logger";
 
 export type User = {
   id: string;
@@ -26,16 +27,16 @@ export async function findUserByEmail(email: string) {
       .limit(1);
 
     const found = rows[0] ?? null;
-    console.log(
+    logger.debug(
       `[auth][credentials] findUserByEmail email=${email} -> ${
         found ? "found" : "not-found"
       }`
     );
     return found;
   } catch (err) {
-    console.error(
+    logger.error(
       `[auth][credentials] findUserByEmail error for email=${email}`,
-      err
+      { err }
     );
     throw err;
   }
@@ -51,7 +52,7 @@ export async function createUserWithPassword(
 ) {
   const hash = await bcrypt.hash(password, 10);
   try {
-    console.log(
+    logger.debug(
       `[auth][credentials] createUserWithPassword attempt email=${email}`
     );
     const created = await db
@@ -67,7 +68,7 @@ export async function createUserWithPassword(
       throw new Error("failed to create user");
 
     const row = created[0] as any;
-    console.log(
+    logger.info(
       `[auth][credentials] createUserWithPassword success userId=${row.id}`
     );
     return {
@@ -76,9 +77,9 @@ export async function createUserWithPassword(
       name: row.name as string | null,
     };
   } catch (err) {
-    console.error(
+    logger.error(
       `[auth][credentials] createUserWithPassword error email=${email}`,
-      err
+      { err }
     );
     throw err;
   }
@@ -89,7 +90,9 @@ export async function createUserWithPassword(
  */
 export async function verifyCredentials(email: string, password: string) {
   try {
-    console.log(`[auth][credentials] verifyCredentials attempt email=${email}`);
+    logger.debug(
+      `[auth][credentials] verifyCredentials attempt email=${email}`
+    );
 
     const rows = await db
       .select({
@@ -104,7 +107,7 @@ export async function verifyCredentials(email: string, password: string) {
 
     const row = rows[0];
     if (!row || !row.passwordHash) {
-      console.log(
+      logger.debug(
         `[auth][credentials] verifyCredentials no user or no password for email=${email}`
       );
       return null;
@@ -112,13 +115,13 @@ export async function verifyCredentials(email: string, password: string) {
 
     const ok = await bcrypt.compare(password, row.passwordHash as string);
     if (!ok) {
-      console.log(
+      logger.debug(
         `[auth][credentials] verifyCredentials invalid password for email=${email}`
       );
       return null;
     }
 
-    console.log(
+    logger.info(
       `[auth][credentials] verifyCredentials success userId=${row.id}`
     );
     return {
@@ -127,10 +130,9 @@ export async function verifyCredentials(email: string, password: string) {
       name: row.name as string | null,
     };
   } catch (err) {
-    console.error(
-      `[auth][credentials] verifyCredentials error email=${email}`,
-      err
-    );
+    logger.error(`[auth][credentials] verifyCredentials error email=${email}`, {
+      err,
+    });
     throw err;
   }
 }

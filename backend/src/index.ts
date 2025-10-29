@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import authRouter from "./routes/metamask";
 import credentialsRouter from "./routes/credentials";
 import cookieParser from "cookie-parser";
+import logger from "./utils/logger";
 
 dotenv.config();
 
@@ -11,9 +12,7 @@ const app = express();
 
 // Simple request logger (timestamp, method, path, ip) to help trace auth flows.
 app.use((req, res, next) => {
-  console.log(
-    `${new Date().toISOString()} [req] ${req.method} ${req.path} from ${req.ip}`
-  );
+  logger.debug(`[req] ${req.method} ${req.path} from ${req.ip}`);
   next();
 });
 
@@ -32,5 +31,5 @@ app.use("/api/auth", credentialsRouter);
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  logger.info(`Server running on http://localhost:${PORT}`);
 });
