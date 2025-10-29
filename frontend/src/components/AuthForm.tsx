@@ -38,7 +38,6 @@ const AuthForm: React.FC<Props> = ({ mode = "register" }) => {
     try {
       if (isRegister) {
         const res = await register({ fullName, email, password });
-        console.debug("AuthForm register result", res);
         if (res.success) {
           navigate("/login");
         } else {
@@ -46,7 +45,6 @@ const AuthForm: React.FC<Props> = ({ mode = "register" }) => {
         }
       } else {
         const res = await login({ email, password });
-        console.debug("AuthForm login result", res);
         if (res.success) {
           navigate("/");
         } else {
@@ -67,7 +65,6 @@ const AuthForm: React.FC<Props> = ({ mode = "register" }) => {
     setLoading(true);
     try {
       const res = await walletLogin();
-      console.debug("AuthForm walletLogin result", res);
       if (res.success) {
         navigate("/");
       } else {

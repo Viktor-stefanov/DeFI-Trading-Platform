@@ -15,16 +15,12 @@ import { useAuthContext } from "../context/useAuthContext";
 const AppRouter: React.FC = () => {
   const RequireAuth: React.FC = () => {
     const { isAuthenticated, loading } = useAuthContext();
-    console.debug("RequireAuth check", { isAuthenticated, loading });
     if (loading) {
-      console.debug("RequireAuth waiting for auth initialization");
       return null; // or a loading spinner
     }
     if (isAuthenticated) {
-      console.debug("RequireAuth allowing access");
       return <Outlet />;
     }
-    console.debug("RequireAuth redirecting to /login");
     return <Navigate to="/login" replace />;
   };
 

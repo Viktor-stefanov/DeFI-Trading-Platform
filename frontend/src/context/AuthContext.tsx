@@ -8,16 +8,11 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
-  console.debug("AuthProvider init", {
-    isAuthenticated,
-  });
-
   useEffect(() => {
     const sessionHandler = (e: Event) => {
       const detail = (e as CustomEvent).detail as {
         authenticated?: boolean;
       } | null;
-      console.debug("AuthProvider event auth:session-changed", { detail });
       setIsAuthenticated(!!detail?.authenticated);
       setLoading(false);
     };
@@ -39,15 +34,11 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
     try {
       const resp = await client.get("/api/auth/me");
       const data = resp.data ?? {};
-      console.debug("AuthProvider refreshSession /api/auth/me response", {
-        status: resp.status,
-        data,
-      });
       const nextAuth = !!data.authenticated;
       setIsAuthenticated(nextAuth);
       return nextAuth;
     } catch (error) {
-      console.debug("AuthProvider refreshSession error", error);
+      console.error("AuthProvider refreshSession error", error);
       setIsAuthenticated(false);
       return false;
     }
@@ -67,11 +58,10 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
   }, [refreshSession]);
 
   const logout = useCallback(async () => {
-    console.debug("AuthProvider logout called");
     try {
       await client.post("/api/auth/logout");
     } catch (error) {
-      console.debug("AuthProvider logout error", error);
+      console.error("AuthProvider logout error", error);
     } finally {
       setIsAuthenticated(false);
       try {
@@ -80,8 +70,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
             detail: { authenticated: false },
           })
         );
-      } catch (e) {
-        console.debug("AuthProvider logout dispatch failed", e);
+      } catch {
+        /* ignore */
       }
     }
   }, []);
