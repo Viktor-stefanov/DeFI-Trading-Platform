@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import client, { setAuthToken } from "../lib/apiClient";
+import client from "../lib/apiClient";
 
 const mask = (t?: string | null) => {
   if (!t) return null;
@@ -8,7 +8,45 @@ const mask = (t?: string | null) => {
 };
 
 type Credentials = { email: string; password: string; fullName?: string };
-type AuthResult = { success: boolean; message?: string; token?: string };
+type AuthResult = { success: boolean; message?: string };
+
+const dispatchSessionEvent = (authenticated: boolean, user: unknown = null) => {
+  try {
+    window.dispatchEvent(
+      new CustomEvent("auth:session-changed", {
+        detail: { authenticated, user: authenticated ? (user ?? null) : null },
+      })
+    );
+  } catch (e) {
+    console.debug("useAuth.dispatchSessionEvent failed", e);
+  }
+};
+
+const confirmSession = async (): Promise<AuthResult> => {
+  try {
+    const meResp = await client.get("/api/auth/me");
+    console.debug("useAuth.confirmSession /api/auth/me response", {
+      status: meResp.status,
+      data: meResp.data,
+    });
+    const meData = meResp.data ?? {};
+    if (meData.authenticated) {
+      dispatchSessionEvent(true, meData.user ?? null);
+      return { success: true };
+    }
+
+    dispatchSessionEvent(false);
+    const message =
+      typeof meData.message === "string"
+        ? meData.message
+        : "Session not established";
+    return { success: false, message };
+  } catch (error) {
+    console.debug("useAuth.confirmSession error", error);
+    dispatchSessionEvent(false);
+    return { success: false, message: "Session check failed" };
+  }
+};
 
 export default function useAuth() {
   const login = useCallback(async (creds: Credentials): Promise<AuthResult> => {
@@ -20,42 +58,15 @@ export default function useAuth() {
         data: resp.data,
       });
       const data = resp.data ?? {};
-      if (data.token) {
-        console.debug("useAuth.login received token", {
-          token: mask(data.token),
-        });
-        setAuthToken(data.token);
-        return { success: true, token: data.token };
-      }
+      const session = await confirmSession();
+      if (session.success) return session;
 
-      // If backend uses HttpOnly cookie session, confirm via /api/auth/me and emit session event
-      try {
-        const meResp = await client.get("/api/auth/me");
-        console.debug("useAuth.login /api/auth/me response", {
-          status: meResp.status,
-          data: meResp.data,
-        });
-        const meData = meResp.data ?? {};
-        if (meData.authenticated) {
-          try {
-            console.debug("useAuth.login emitting auth:session-changed", {
-              user: meData.user ?? null,
-            });
-            window.dispatchEvent(
-              new CustomEvent("auth:session-changed", {
-                detail: { authenticated: true, user: meData.user ?? null },
-              })
-            );
-          } catch (e) {
-            console.debug("useAuth.login dispatch event failed", e);
-          }
-          return { success: true };
-        }
-      } catch (e) {
-        console.debug("useAuth.login /api/auth/me error", e);
-      }
-
-      return { success: !!data.token, token: data.token };
+      return {
+        success: false,
+        message:
+          session.message ??
+          (typeof data.message === "string" ? data.message : "Login failed"),
+      };
     } catch (err: unknown) {
       console.error("login error", err);
       const msg =
@@ -79,41 +90,17 @@ export default function useAuth() {
           data: resp.data,
         });
         const data = resp.data ?? {};
-        if (data.token) {
-          console.debug("useAuth.register received token", {
-            token: mask(data.token),
-          });
-          setAuthToken(data.token);
-          return { success: true, token: data.token };
-        }
+        const session = await confirmSession();
+        if (session.success) return session;
 
-        try {
-          const meResp = await client.get("/api/auth/me");
-          console.debug("useAuth.register /api/auth/me response", {
-            status: meResp.status,
-            data: meResp.data,
-          });
-          const meData = meResp.data ?? {};
-          if (meData.authenticated) {
-            try {
-              console.debug("useAuth.register emitting auth:session-changed", {
-                user: meData.user ?? null,
-              });
-              window.dispatchEvent(
-                new CustomEvent("auth:session-changed", {
-                  detail: { authenticated: true, user: meData.user ?? null },
-                })
-              );
-            } catch (e) {
-              console.debug("useAuth.register dispatch event failed", e);
-            }
-            return { success: true };
-          }
-        } catch (e) {
-          console.debug("useAuth.register /api/auth/me error", e);
-        }
-
-        return { success: !!data.token, token: data.token };
+        return {
+          success: false,
+          message:
+            session.message ??
+            (typeof data.message === "string"
+              ? data.message
+              : "Registration failed"),
+        };
       } catch (err: unknown) {
         console.error("register error", err);
         const msg =
@@ -181,45 +168,16 @@ export default function useAuth() {
         data: verifyResp.data,
       });
       const verifyJson = verifyResp.data ?? {};
-      const token = verifyJson?.token;
-      if (token) {
-        console.debug("useAuth.walletLogin received token", {
-          token: mask(token),
-        });
-        setAuthToken(token);
-        return { success: true, token };
-      }
-
-      // If server sets an HttpOnly cookie on verify, confirm via /api/auth/me and emit session event
-      try {
-        const meResp = await client.get("/api/auth/me");
-        console.debug("useAuth.walletLogin /api/auth/me response", {
-          status: meResp.status,
-          data: meResp.data,
-        });
-        const meData = meResp.data ?? {};
-        if (meData.authenticated) {
-          try {
-            console.debug("useAuth.walletLogin emitting auth:session-changed", {
-              user: meData.user ?? null,
-            });
-            window.dispatchEvent(
-              new CustomEvent("auth:session-changed", {
-                detail: { authenticated: true, user: meData.user ?? null },
-              })
-            );
-          } catch (e) {
-            console.debug("useAuth.walletLogin dispatch event failed", e);
-          }
-          return { success: true };
-        }
-      } catch (e) {
-        console.debug("useAuth.walletLogin /api/auth/me error", e);
-      }
+      const session = await confirmSession();
+      if (session.success) return session;
 
       return {
         success: false,
-        message: verifyJson?.message ?? "No token returned",
+        message:
+          session.message ??
+          (typeof verifyJson?.message === "string"
+            ? verifyJson.message
+            : "Session not established"),
       };
     } catch (err: unknown) {
       console.error("walletLogin error", err);

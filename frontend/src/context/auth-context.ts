@@ -1,11 +1,10 @@
 import { createContext } from "react";
 
 export type AuthContextShape = {
-  token: string | null;
   isAuthenticated: boolean;
   loading: boolean;
-  setToken: (t: string | null) => void;
-  logout: () => void;
+  refreshSession: () => Promise<boolean>;
+  logout: () => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextShape | undefined>(
