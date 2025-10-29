@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev:ws": "ts-node-dev --respawn --transpile-only src/binanceWsServer.ts",
     "build": "tsc",
     "start": "node dist/index.js"
   },
@@ -13,6 +14,7 @@
   "license": "ISC",
   "dependencies": {
     "@types/cookie-parser": "^1.4.10",
+    "@types/ws": "^8.18.1",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -21,10 +23,12 @@
     "drizzle-orm": "^0.44.7",
     "ethers": "^6.15.0",
     "express": "^5.1.0",
+    "http": "^0.0.1-security",
     "jsonwebtoken": "^9.0.2",
-    "winston": "^3.13.0",
     "node-postgres": "^0.6.2",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "winston": "^3.13.0",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@tsconfig/node-lts": "^22.0.2",

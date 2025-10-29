@@ -5,6 +5,9 @@ import authRouter from "./routes/metamask";
 import credentialsRouter from "./routes/credentials";
 import cookieParser from "cookie-parser";
 import logger from "./utils/logger";
+import http from "http";
+import { setupWsServer } from "./websocket/server";
+import { BinanceTickerPayload, startBinanceStream } from "./websocket/binance";
 
 dotenv.config();
 
@@ -29,7 +32,14 @@ app.use(cookieParser());
 app.use("/api/auth", authRouter);
 app.use("/api/auth", credentialsRouter);
 
+const server = http.createServer(app);
+const { broadcast } = setupWsServer(server);
+
+startBinanceStream((payload: BinanceTickerPayload) => {
+  broadcast(payload);
+});
+
 const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   logger.info(`Server running on http://localhost:${PORT}`);
 });
