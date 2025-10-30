@@ -5,7 +5,7 @@ import {
   meHandler,
 } from "../controllers/credentials";
 
-const router = Router();
+const router: Router = Router();
 
 router.post("/register", registerHandler);
 router.post("/login", loginHandler);
