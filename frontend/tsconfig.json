@@ -18,5 +18,5 @@
     "types": ["vite/client"] // Vite type definitions
   },
   "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "references": [{ "path": "./tsconfig.node.json", "composite": true }]
 }
