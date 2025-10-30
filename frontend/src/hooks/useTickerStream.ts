@@ -27,6 +27,8 @@ export type TickerRow = {
 
 const DEFAULT_WS_URL = import.meta.env.VITE_TICKER_WS_URL ?? "";
 
+const getRandomFlushInterval = () => Math.floor(500 + Math.random() * 500);
+
 type RawTicker = {
   s?: string;
   c?: string;
@@ -115,32 +117,76 @@ const useTickerStream = (url: string = DEFAULT_WS_URL) => {
   const [tickers, setTickers] = useState<Record<string, TickerRow>>({});
   const [attempt, setAttempt] = useState(0);
   const reconnectTimerRef = useRef<number | null>(null);
+  const pendingUpdatesRef = useRef<Record<string, TickerRow>>({});
+  const flushTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return undefined;
     }
 
+    const clearFlushTimer = () => {
+      if (flushTimerRef.current !== null) {
+        window.clearTimeout(flushTimerRef.current);
+        flushTimerRef.current = null;
+      }
+    };
+
     if (!url) {
       setStatus("unconfigured");
       setError(
         "Ticker WebSocket URL missing. Set VITE_TICKER_WS_URL to enable the feed."
       );
+      clearFlushTimer();
+      pendingUpdatesRef.current = {};
+      setTickers({});
+      setLastUpdated(null);
       return undefined;
     }
 
     if (!("WebSocket" in window)) {
       setStatus("error");
       setError("WebSocket is not supported in this environment.");
+      clearFlushTimer();
+      pendingUpdatesRef.current = {};
+      setTickers({});
+      setLastUpdated(null);
       return undefined;
     }
 
     setStatus("connecting");
     setError(null);
     setTickers({});
+    pendingUpdatesRef.current = {};
+    clearFlushTimer();
     setLastUpdated(null);
     const ws = new WebSocket(url);
     let active = true;
+
+    const flushPendingUpdates = () => {
+      flushTimerRef.current = null;
+      const pending = pendingUpdatesRef.current;
+      const symbols = Object.keys(pending);
+      if (!symbols.length) return;
+
+      pendingUpdatesRef.current = {};
+      setTickers((prev) => {
+        const next = { ...prev };
+        for (const symbol of symbols) {
+          next[symbol] = pending[symbol];
+        }
+        return next;
+      });
+      setLastUpdated(Date.now());
+    };
+
+    const scheduleFlush = () => {
+      if (flushTimerRef.current !== null) return;
+      flushTimerRef.current = window.setTimeout(
+        flushPendingUpdates,
+        getRandomFlushInterval()
+      );
+    };
 
     const scheduleReconnect = () => {
       if (!active) return;
@@ -161,17 +207,18 @@ const useTickerStream = (url: string = DEFAULT_WS_URL) => {
       const updates = extractPayloads(event.data);
       if (!updates.length) return;
 
-      setTickers((prev) => {
-        const next = { ...prev };
-        for (const raw of updates) {
-          const normalized = normalizeTicker(raw);
-          if (normalized) {
-            next[normalized.symbol] = normalized;
-          }
+      let hasNormalized = false;
+      for (const raw of updates) {
+        const normalized = normalizeTicker(raw);
+        if (normalized) {
+          pendingUpdatesRef.current[normalized.symbol] = normalized;
+          hasNormalized = true;
         }
-        return next;
-      });
-      setLastUpdated(Date.now());
+      }
+
+      if (hasNormalized) {
+        scheduleFlush();
+      }
     };
 
     ws.onerror = (event) => {
@@ -179,17 +226,22 @@ const useTickerStream = (url: string = DEFAULT_WS_URL) => {
       console.error("Ticker stream error", event);
       setStatus("error");
       setError("Real-time market feed errored. Check the network console.");
+      flushPendingUpdates();
       scheduleReconnect();
     };
 
     ws.onclose = () => {
       if (!active) return;
       setStatus((current) => (current === "error" ? current : "closed"));
+      flushPendingUpdates();
       scheduleReconnect();
     };
 
     return () => {
       active = false;
+      flushPendingUpdates();
+      clearFlushTimer();
+      pendingUpdatesRef.current = {};
       if (reconnectTimerRef.current !== null) {
         window.clearTimeout(reconnectTimerRef.current);
         reconnectTimerRef.current = null;
